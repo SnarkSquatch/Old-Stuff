@@ -1,6 +1,6 @@
 '-------------------------------------------------------------------------------------------------------------------
 'This will scan a selected drive, tell you the names of the files in it, and give you the dates they were created.
-'To run, place anywhere and double click. Output saved to the user's Desktop as Results.txt.
+'To run, place anywhere and double click. Output saved to Desktop\Scan\Results.txt
 '-------------------------------------------------------------------------------------------------------------------
 
 driveLetter = InputBox("Enter the drive letter to scan (e.g. C:):") 							'Prompts user for the drive letter
@@ -21,14 +21,15 @@ Else
 End If
 
 Set shell = CreateObject("WScript.Shell") 														'Creates WScript.Shell
-outputFilePath = shell.ExpandEnvironmentStrings("%USERPROFILE%") & "\Desktop\Results.txt" 		'Defines the output file path on the user's desktop
+outputFilePath = shell.ExpandEnvironmentStrings("%USERPROFILE%") & "\Desktop\Scan\Results.txt" 	'Defines the output file path on the user's desktop
 
 
-If fs.FileExists(outputFilePath) Then															'Check if the output file already exists
-    If MsgBox("Results.txt already exists. Do you want to overwrite it?", vbYesNo) = vbNo Then
-        WScript.Quit
-    End If
-End If
+Dim fileIndex																					'Checks if output file already exists and creates a new filename if it does
+fileIndex = 1
+While fs.FileExists(outputFilePath)
+    outputFilePath = shell.ExpandEnvironmentStrings("%USERPROFILE%") & "\Desktop\Scan\Results" & fileIndex & ".txt"
+    fileIndex = fileIndex + 1
+Wend
 
 Set outputFile = fs.CreateTextFile(outputFilePath, True)										'Opens the output file for writing
 
