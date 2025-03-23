@@ -1,0 +1,31 @@
+'-------------------------------------------------------------------------------------------------------------------'
+'This will scan a selected drive, tell you the names of the files in it, and give you the dates they were created.
+'To run, place anywhere and double click. Output saved to the user's Desktop as Results.txt.
+'-------------------------------------------------------------------------------------------------------------------'
+
+driveLetter = InputBox("Enter the drive letter to scan (e.g. C:):") 'Prompts user for the drive letter
+
+If Right(driveLetter, 1) <> ":" Then 'Ensures the drive letter is formatted correctly
+    driveLetter = driveLetter & ":"
+End If
+
+fn = driveLetter & "\" 'Defines the folder to check
+
+Set fs = CreateObject("Scripting.FileSystemObject") 'Creates FileSystemObject
+
+If fs.DriveExists(driveLetter) Then 'Checks if the drive exists
+    msgbox "Good drive" 'Shows "Good drive" if drive exists
+Else
+    msgbox "Bad drive" 'Shows "Bad drive" if drive doesn't exist
+    WScript.Quit 'Exits if the drive does not exist
+End If
+
+Set folder = fs.GetFolder(fn) 'Gets reference to folder
+Set shell = CreateObject("WScript.Shell") 'Creates WScript.Shell
+
+outputFilePath = shell.ExpandEnvironmentStrings("%USERPROFILE%") & "\Desktop\Results.txt" 'Defines the output file path on the user's desktop
+
+command = "cmd.exe /c dir """ & fn & """ > """ & outputFilePath & """" 'Prepares command to list directory contents and redirect output to text file
+shell.Run command, 0, True 'Runs command silently and waits for it to complete
+
+msgbox "Results File Created and output saved to " & outputFilePath 'Shows message box indicating Results.txt has been created
