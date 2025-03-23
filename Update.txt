@@ -1,0 +1,146 @@
+Set updateSession = CreateObject("Microsoft.Update.Session")
+updateSession.ClientApplicationID = "MSDN Sample Script"
+
+Set updateSearcher = updateSession.CreateUpdateSearcher()
+
+WScript.Echo "Searching for updates..." & vbCRLF
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'above this creates an update session and searches for microsoft updates*
+'-----------------------------------------------------------------------------------------------------------------------'
+
+Set searchResult =_
+updateSearcher.Search("IsInstalled-0 and Type='Software' and 'InHiden=0")
+
+WScript.Echo "List of applicable items on the machine: "
+
+For I = 0 To searchResult.Updates.Count-1
+      Set update = searchResult.Updates.Item(I)
+      WScript.Echo I + 1 & "> " & update.Title
+Next
+
+If searchResult.Updates.Count = 0 Then
+      WScript.Echo "There are no applicable updates."
+      Wscript.Quit
+End If
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'above this checks what's on the machine for updates*
+'-----------------------------------------------------------------------------------------------------------------------'
+
+Wscript.Echo vbCRLF & "Creating collection of updates to download:"
+
+Set updatesToDownload = CreateObject("Microsoft.Update.UpdateColl")
+
+For I = 0 to searchResult.Updates.Count-1
+      Set update = searchResult.Updates.Item(I)
+      addThisUpdate = false
+      If update.InstallationBehavior.CanRequestUserInput = true Then
+            WScript.Echo I + 1 & "> skipping: " & update.Title & _
+            " because it requires user input"
+      Else
+            If update.EulaAccepted = Flase Then
+                 WScript.Echo I + 1 & ">note: " & update.Title & _
+                 " has a license agreement that must be accepted:"
+                 WScript.Echo update.EulaText
+                 WScript.Echo "Do you accept this license agreement? (Y/N)"
+                 strInput = WScript.StdIn.Readline
+                 WScript.Echo
+                 If (strInput = "Y" or strInput = "y") Then
+                       update.AcceptEula()
+                       addThisUpdate = true
+                 Else
+                       WScript.Echo I + 1 & "> skipping: " & update.Title & _
+                       " because the license agreement was declined"
+                  End If
+            Else
+                  addThisUpdate = true
+            End If
+      End If
+      If addThisUpdate = true Then
+            WScript.Echo I + 1 & "> adding: " & update.Title
+            updatesToDownload.Add(update)
+      End If
+Next
+
+If updatesToDownload.Count = 0 Then
+      WScript.Echo "All updates were skipped."
+      WScript.Quit
+End If
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'above this makes a yes/no input box pop up requesting EULA acceptance for updates that were found
+'and either proceeds with or cancels downloading depending on what you choose.
+'-----------------------------------------------------------------------------------------------------------------------'
+
+WScript.Echo vbCRLF & "Downloading updates..."
+
+Set downloader = updateSession.CreateUpdateDownloader()
+downloader.Updates = updatesToDownload
+downloader.Download()
+
+Set updatesToInstall = CreateObject("Microsoft.Update.UpdateColl")
+
+rebootMayBeRequired = false
+
+WScript.Echo vbCRLF & "Successfully downloaded updates:"
+
+For I = 0 To searchResult.UpdatesCount-1
+      set update = searchResult.Updates.Item(I)
+      If update.IsDownloaded true Then
+            WScript.Echo I + 1 & "> " & update.Title
+            updatesToInstall.Add(update)
+            If update.InstallationBehavior.RebootBehavior > 0 Then
+                  rebootMayBeRequired = true
+            End if
+      End If
+Next
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'the above downloads and installs updates that do not require a reboot
+'-----------------------------------------------------------------------------------------------------------------------'
+
+If updatesToInstall.Count = 0 Then
+      WScript.Echo "No updates were successfully downloaded."
+      WScript.Quit
+End If
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'this shows if there are no updates available
+'-----------------------------------------------------------------------------------------------------------------------'
+
+If rebootMayBeRequired = true Then
+      WScript.Echo vbCRLF & "These updates may require a reboot."
+End if
+
+'-----------------------------------------------------------------------------------------------------------------------'
+'this shows if updates require a reboot
+'-----------------------------------------------------------------------------------------------------------------------'
+
+Wscript.Echo vbCRLF & "Would you like to install updates now? (Y/N)"
+strInput = Wscript.StdIn.Readline
+Wscript.Echo
+
+If (strInput = "Y" or strInput = "y") Then
+      WScript.Echo "Installing updates..."
+      Set installer = updateSession.CreateUpdateInstaller()
+      installer.Updates = updatesToInstall
+      Set installationResult = installer.Install()
+
+      WScript.Echo "Installation Result: " & _
+      installationResult.ResultCode
+      WScript.Echo "Reboot Required: " & _
+      installationResult.RebootRequired & vbCRLF
+      WScript.Echo "Listing of updates installed " & _
+      "and individual installation results:"
+
+      For I = 0 to updatesToInstall.Count - 1
+            WScript.Echo I + 1 & "> " & _
+            updatesToInstall.Item(i).Title & _
+            ": " & installationResult.GetUpdateResult(i).ResultCode
+      Next
+End If
+'-----------------------------------------------------------------------------------------------------------------------'
+'this asks if you want to install the updates that were found, installs them if you want it to, and informs
+'you if a reboot is required
+'-----------------------------------------------------------------------------------------------------------------------'
